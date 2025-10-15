@@ -1,0 +1,115 @@
+
+let seed = 0, t = 0;
+let wind = 0.0, windTarget = 0.0;
+
+const palette = {
+  bg:"#0f0f0f", ink:"#ffffff"
+};
+
+const verses = [
+  "BINU graphic design portfolio ",
+  "Branding Design",
+  "Typographic",
+  "Poster Design",
+  "Design Management",
+  "yaichi100@GMAIL.COM",
+  "135-0931-8033",
+  "YAICHI WECHAT"
+];
+
+let curves = [];
+
+function setup(){
+  createCanvas(windowWidth, windowHeight);
+  textAlign(CENTER, CENTER);
+  noStroke();
+  reseed();
+}
+
+function reseed(){
+  seed = (random()*1e9)|0;
+  randomSeed(seed);
+  noiseSeed(seed);
+  t = 0;
+  generateCurves();
+}
+
+function windowResized(){
+  resizeCanvas(windowWidth, windowHeight);
+  generateCurves();
+}
+
+function generateCurves(){
+  curves = [];
+  let m = min(width, height);
+  let margin = m * 0.1;
+  for(let i=0;i<5;i++){
+    let p = [];
+    for (let j = 0; j < 4; j++) {
+      p.push(lerp(margin, width - margin, gridRand()));
+      p.push(lerp(margin, height - margin, gridRand()));
+    }
+    curves.push({
+      p,
+      verse: random(verses),
+      size: lerp(m*0.018, m*0.045, random(0.25, 1)),
+      density: int(random(60, 90)),
+      jitter: random(0.001, 0.004),
+      slant: random(-0.35, 0.35),
+      offset: random(TAU),
+      lead: random(0.65, 1.1),
+      dir: random([1, -1])
+    });
+  }
+}
+
+function draw(){
+  background(palette.bg);
+  windTarget = map(mouseX, 0, width, -0.9, 0.9);
+  wind = lerp(wind, windTarget, 0.05);
+  for(const c of curves){ drawVerseCurve(c); }
+  t += 1;
+}
+
+function drawVerseCurve(cfg){
+  let [x1,y1,x2,y2,x3,y3,x4,y4] = cfg.p;
+  let k = 0.0008;
+  let amp = min(width,height)*0.12;
+  x2 += (noise(seed*0.1, t*k+1)-0.5)*2*amp + wind*30;
+  y2 += (noise(seed*0.2, t*k+2)-0.5)*2*amp;
+  x3 += (noise(seed*0.3, t*k+3)-0.5)*2*amp - wind*30;
+  y3 += (noise(seed*0.4, t*k+4)-0.5)*2*amp;
+
+  let col = color(palette.ink);
+  col.setAlpha(230);
+  fill(col);
+  textSize(cfg.size);
+  textStyle(NORMAL);
+
+  const chars = [...cfg.verse];
+  for(let i=0;i<chars.length;i++){
+    let tt = i/(chars.length-1);
+    tt = constrain(tt + (noise(i*13.1 + seed*0.01, t*cfg.jitter) - 0.5)*0.1, 0, 1);
+    let px = bezierPoint(x1,x2,x3,x4, tt);
+    let py = bezierPoint(y1,y2,y3,y4, tt);
+    let dx = bezierTangent(x1,x2,x3,x4, tt);
+    let dy = bezierTangent(y1,y2,y3,y4, tt);
+    let ang = atan2(dy, dx) + cfg.slant + wind*0.15;
+    ang *= cfg.dir;
+    push();
+    translate(px, py);
+    rotate(ang);
+    translate(0, sin(tt*TAU*2 + cfg.offset)*cfg.size*0.25*cfg.lead);
+    text(chars[i], 0, 0);
+    pop();
+  }
+}
+
+function gridRand(){
+  let r = random(), snap = 0.25;
+  return constrain(round(r/snap)*snap + random(-0.06,0.06), 0.05, 0.95);
+}
+
+function mousePressed(){
+  reseed();
+}
